@@ -13,19 +13,23 @@
 #property version   "1.00"
 #property strict
 
-extern double  Lots              = 1;
-extern int     MACount           = 5;
-extern int     MagicSell         = 59789101;
-extern int     MagicBuy          = 59789100;
-extern int     TakeProfit        = 40;
-extern int     StopLoss          = 40;
-extern int     FirstMAPeriod     = 8;
-extern int     SecondMAPeriod    = 15;
-extern int     ThirdMAPeriod     = 20;
-extern int     FourthMAPeriod    = 25;
-extern int     FifthMAPeriod     = 35;
-extern bool    ECNExecution      = false;
+extern double  Lots                   = 1;
+extern int     MACount                = 5;
+extern int     MagicSell              = 59789101;
+extern int     MagicBuy               = 59789100;
+extern int     TakeProfit             = 40;
+extern int     StopLoss               = 40;
+extern int     FirstMAPeriod          = 8;
+extern int     SecondMAPeriod         = 15;
+extern int     ThirdMAPeriod          = 20;
+extern int     FourthMAPeriod         = 25;
+extern int     FifthMAPeriod          = 35;
+extern int     CloseRequirement       = 3;
+extern int     RSIPeriod              = 6;
+extern int     RSILimit               = 14;
+extern bool    ECNExecution           = false;
 extern bool    AutoAdjustToFiveDigits = false;
+extern bool    DontTradeFriday        = false;
 
 double MyPoint;
 
@@ -53,6 +57,11 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 //---
+   if(DontTradeFriday == true)
+   {
+      if(TimeDayOfWeek(TimeCurrent())==1 || TimeDayOfWeek(TimeCurrent())==5){return;}
+   }
+   
    static int SellTicket = 0;
    static int BuyTicket = 0;
    
@@ -106,7 +115,6 @@ void OnTick()
       else
       {
          //Execute buy order if conditions are met
-         Alert("Begin Sell Order");
          BeginSellOrder(MovingAverages, SellTicket);
       }
       
@@ -153,6 +161,8 @@ void OnTick()
       CloseOrder(SellTicket);
    }
    */
+   SellTicket = FindTicket(MagicSell);
+   CheckSellCloseConditions(MovingAverages,SellTicket);
    
   }
 //+------------------------------------------------------------------+
@@ -178,17 +188,14 @@ void BeginSellOrder(double &MovingAverages[5], int &ticket)
   */
   if((FirstSpread > ND(Bid*.00142363)) && (SecondSpread > ND(Bid*.00056255)) && (ThirdSpread > ND(Bid*.00040273)) && (FourthSpread > ND(Bid*.00056255)))
   {
-      //Bollinger Bands
-      double BottomBand = iBands(Symbol(),0,20,2.0,0,PRICE_CLOSE,MODE_LOWER,0);
-      Alert(BottomBand);
-      if(Bid > BottomBand)
-      {
-         ticket = MarketOrderSend(Symbol(), OP_SELL, Lots, ND(Bid), 10*int(MyPoint/Point()),0,0, "Set by Ribbon Strategy V2", MagicSell);
-         if(ticket < 0)
-         {
-            Alert("Error Sending SELL ORDER");
-         }
-      }
+    double RSI = iRSI(Symbol(),0,RSIPeriod,PRICE_CLOSE,0);
+    if(RSI > RSILimit){
+    ticket = MarketOrderSend(Symbol(), OP_SELL, Lots, ND(Bid), 10*int(MyPoint/Point()),0,0, "Set by Ribbon Strategy V2", MagicSell);
+    if(ticket < 0)
+    {
+      Alert("Error Sending SELL ORDER");
+    }
+   }
   }
   
 }
@@ -223,7 +230,7 @@ void CheckSellCloseConditions(double &MovingAverages[5], int &ticket)
    double FourthSpread = ND(MovingAverages[4] - MovingAverages[3]);
    
    int count = 0;
-   if(FirstSpread < ND(Bid*.00142363))
+   if(FirstSpread < ND(Bid*.00142363)) 
    {
       count = count + 1;
    }
@@ -359,3 +366,4 @@ double ND(double val)
 {
    return(NormalizeDouble(val, Digits()));
 }
+
