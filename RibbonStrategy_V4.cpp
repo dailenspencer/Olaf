@@ -154,13 +154,13 @@ void OnTick()
    }
    
    //Cutting out orders to reduce losses
-   /*
+   
    if(MovingAverages[0] > MovingAverages[4])
    {
       SellTicket = FindTicket(MagicSell);
       CloseOrder(SellTicket);
    }
-   */
+   
    SellTicket = FindTicket(MagicSell);
    CheckSellCloseConditions(MovingAverages,SellTicket);
    
@@ -189,6 +189,8 @@ void BeginSellOrder(double &MovingAverages[5], int &ticket)
   if((FirstSpread > ND(Bid*.00142363)) && (SecondSpread > ND(Bid*.00056255)) && (ThirdSpread > ND(Bid*.00040273)) && (FourthSpread > ND(Bid*.00056255)))
   {
     double RSI = iRSI(Symbol(),0,RSIPeriod,PRICE_CLOSE,0);
+    double Gauge = GetMomentumGauge();
+    double MomentumIndicator = iMomentum(Symbol(),0,50,PRICE_CLOSE,0);
     if(RSI > RSILimit){
     ticket = MarketOrderSend(Symbol(), OP_SELL, Lots, ND(Bid), 10*int(MyPoint/Point()),0,0, "Set by Ribbon Strategy V2", MagicSell);
     if(ticket < 0)
@@ -252,6 +254,12 @@ void CheckSellCloseConditions(double &MovingAverages[5], int &ticket)
      CloseOrder(ticket);
    }
    
+   /*
+   if(count >= 3)
+   {
+      CloseOrder(ticket);
+   }
+   */
 }
 
 void CheckBuyCloseConditions(double &MovingAverages[5], int &ticket)
@@ -342,10 +350,6 @@ int FindTicket(int M)
 //+-----------------------------------------------------------------+
 //| Mathmatical Calculations Functions                              |
 //+-----------------------------------------------------------------+
-double CalculateSpread()
-{
-   return(0.0);
-}
 
 
 
@@ -367,3 +371,35 @@ double ND(double val)
    return(NormalizeDouble(val, Digits()));
 }
 
+
+
+double GetMomentumGauge()
+{
+   double HighestM = 0, LowestM = 0;
+   for(int shift = 1; shift <= 50; shift++) 
+   {
+      double M = iMomentum(Symbol(),0,50,PRICE_CLOSE,shift);
+      
+      if (HighestM == 0) 
+      {
+         HighestM = M;
+         LowestM  = M;
+         continue;
+      }
+      if (M > HighestM)
+      {
+         HighestM = M;
+      }
+      if (M < LowestM)
+      {
+         LowestM = M;
+      }
+   }
+   double spread = HighestM - LowestM;
+   double increase = spread * .05;
+   double gauge = LowestM + increase;
+   return(gauge);
+ //--------------------------------------------------------------------
+//LowestM: the lowest value of the indicator for the last 50 bars on H1.
+//HighestM: the Highest.
+}
