@@ -260,3 +260,4 @@ void SetMyPoint()
 double ND(double val)
 {
    return(NormalizeDouble(val, Digits()));
+}
